@@ -1,0 +1,48 @@
+version: "3.5"
+services:
+  mysql:
+    image: mariadb
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    ports:
+      - 127.0.0.1:3306:3306
+    networks:
+      - beats-pro-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    restart: always
+
+  beats-pro-traefik:
+    # The official v2 Traefik docker image
+    image: traefik:v2.2
+    # Enables the web UI and tells Traefik to listen to docker
+    command: --api.insecure=true --providers.docker
+    ports:
+      # The HTTP port
+      - "80:80"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    networks:
+      - beats_pro_proxy
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config/traefik.yml:/traefik.yml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.beatspro.space`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.services.traefik-traefik.loadbalancer.server.port=8080"
+      - "traefik.docker.network=local-space_beats_pro_proxy"
+
+networks:
+  beats-pro-db:
+    external: false
+  beats_pro_proxy:
+    external: false
+  beats-pro-internal:
+    external: false
